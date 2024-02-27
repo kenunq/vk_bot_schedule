@@ -9,7 +9,7 @@ from openpyxl import load_workbook
 
 
 def get_schedule_for_teacher(filename, find):
-    """Функция для создания JSON объекта путем парсинга excel таблицы"""
+    """Функция для создания словаря путем парсинга excel таблицы"""
 
     book = load_workbook(filename=f'{os.getcwd()}/static/schedule/Pасписание/' + filename)
     ws = book.active
@@ -58,6 +58,23 @@ def get_schedule_for_teacher(filename, find):
 
     return result
 
+
+def get_schedule_for_group(filename, find):
+    book = load_workbook(filename=f'{os.getcwd()}/static/schedule/Pасписание/' + filename)
+    ws = book.active
+    SCHEDULE_LEN = 6
+    result = {}
+    for i in range(1, 18):
+        for j in range(2, 34):
+            obj = str(ws.cell(row=j, column=i).value)
+            if obj == find:
+                for iter in range(SCHEDULE_LEN):
+                    result[iter] = {'Время: ': str(ws.cell(row=j+iter+1, column=2).value),
+                                 'Предмет и преподаватель: ': str(ws.cell(row=j+iter+1, column=i).value).replace('\n', ' '),
+                                 'Группа: ': obj,
+                                 'Кабинет: ': str(ws.cell(row=j+iter+1, column=i+1).value)}
+
+    return result
 
 
 def download_exel(url: str) -> None:
@@ -117,4 +134,4 @@ def del_from_folder():
         print("Folder not found")
 
 
-download_exel('https://disk.yandex.ru/d/VNdnX6hmveqJuw')
+# download_exel('https://disk.yandex.ru/d/VNdnX6hmveqJuw')
