@@ -1,14 +1,19 @@
 import os
 import shutil
+import threading
+import time
+from functools import cache
 from urllib.parse import urlencode
 from urllib.request import urlopen
 from zipfile import ZipFile
 
 import requests
+from bs4 import BeautifulSoup
 from openpyxl import load_workbook
 
 
-def get_schedule_for_teacher(filename, find):
+@cache
+def get_schedule_for_teacher(filename: str, find: str) -> dict:
     """Функция для создания словаря путем парсинга excel таблицы"""
 
     book = load_workbook(filename=f'{os.getcwd()}/static/schedule/Pасписание/' + filename)
@@ -59,7 +64,9 @@ def get_schedule_for_teacher(filename, find):
     return result
 
 
-def get_schedule_for_group(filename, find):
+@cache
+def get_schedule_for_group(filename: str, find: str) -> dict:
+    """Функция для создания словаря путем парсинга excel таблицы"""
     book = load_workbook(filename=f'{os.getcwd()}/static/schedule/Pасписание/' + filename)
     ws = book.active
     SCHEDULE_LEN = 6
@@ -75,6 +82,63 @@ def get_schedule_for_group(filename, find):
                                  'Кабинет: ': str(ws.cell(row=j+iter+1, column=i+1).value)}
 
     return result
+
+
+def get_filename_list() -> list[str]:
+    """Функция для получения доступных расписаний занятий"""
+
+    list_name = os.listdir(os.getcwd() + '/static/schedule/Pасписание')
+
+    result = []
+    for i in list_name:
+        result.append(i.replace('.xlsx', '').strip())
+
+    return result
+
+
+def check_on_update(url: str) -> bool:
+    """Функция для проверки наличия обновлений"""
+
+    st_accept = 'text/html'
+
+    st_useragent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+
+    headers = {'User-Agent': st_useragent, 'Accept': st_accept}
+
+    response = requests.get(url, headers=headers)
+
+    src = response.text
+
+    soup = BeautifulSoup(src, 'html.parser')
+
+    title_elements = soup.find_all(class_='listing-item__title')
+
+    result_parse = []
+
+    # Проходимся по найденным элементам и выводим содержимое каждого span
+    for title_element in title_elements:
+        span_element = title_element.find('span')
+        if span_element:
+            result_parse.append(span_element.text[:-5].rstrip())
+
+    current_ver = get_filename_list()
+
+    for i in result_parse:
+        if i not in current_ver:
+            return True
+
+    return False
+
+
+def del_from_folder() -> None:
+    """Функция для удаления папки с расписаниями"""
+
+    try:
+        list = os.listdir(os.getcwd() + "/static/schedule/Pасписание")
+        if list:
+            shutil.rmtree(os.getcwd() + "/static/schedule/Pасписание")
+    except:
+        print("Folder not found")
 
 
 def download_exel(url: str) -> None:
@@ -111,27 +175,31 @@ def download_exel(url: str) -> None:
             os.rename(file_path, new_file_path)
 
 
-def get_filename_list() -> list[str]:
-    """Функция для получения доступных расписаний занятий"""
-    
-    list_name = os.listdir(os.getcwd() + '/static/schedule/Pасписание')
+class AsyncActionDownloadSchedule(threading.Thread):
+    '''Класс работающий не в основном потоке, который качает excel таблиц с рассписанием'''
 
-    result = []
-    for i in list_name:
-        result.append(i.replace('.xlsx', '').strip())
+    url_schedule = 'https://disk.yandex.ru/d/VNdnX6hmveqJuw'
 
-    return result
+    def run(self):
+        while True:
+
+            # Проверяем наличие обновлений
+            if not check_on_update(self.url_schedule):
+                # таймаут в 15 минут
+                time.sleep(900)
+                continue
+
+            del_from_folder()
+            download_exel(url=self.url_schedule)
+
+            # таймаут в 15 минут
+            time.sleep(900)
 
 
-def del_from_folder():
-    """Функция для удаления папки с расписаниями"""
-
-    try:
-        list = os.listdir(os.getcwd() + "/static/schedule/Pасписание")
-        if list:
-            shutil.rmtree(os.getcwd() + "/static/schedule/Pасписание")
-    except:
-        print("Folder not found")
+# создаем экземпляр класса для скачивания excel таблиц
+async_action_download_schedule = AsyncActionDownloadSchedule()
+async_action_download_schedule.start()
 
 
 # download_exel('https://disk.yandex.ru/d/VNdnX6hmveqJuw')
+# print(check_on_update('https://disk.yandex.ru/d/VNdnX6hmveqJuw'))
