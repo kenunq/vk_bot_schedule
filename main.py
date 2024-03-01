@@ -1,8 +1,6 @@
 import json
 
 import vk_api
-from vk_api.upload import VkUpload
-from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from decouple import config
@@ -117,6 +115,9 @@ for event in longpoll.listen():
             msg = event.object['message']['text'].lower()
             id = event.object['message']['from_id']
 
+            if not get_value('user_states', id):
+                set_value('user_states', 'start', id)
+
             if msg == 'начать':
                 if get_value('user_states', id) == 'start':
                     clear_keyboard()
@@ -131,17 +132,36 @@ for event in longpoll.listen():
 
             if msg in ('расписание', 'назад'):
                     set_value('user_states', 'start', id)
+
                     clear_keyboard()
+
+                    max_in_line = 2
+
+                    files = get_filename_list()[:-1]
+
                     count = 0
-                    for i in get_filename_list()[:-1]:
-                        keyboard.add_button(i, color=VkKeyboardColor.PRIMARY)
-                        count += 1
-                        if count == 2:
+
+                    if len(files) > 20:
+                        max_in_line = 3
+
+                    for i in files:
+                        if i.startswith('График'):
+                            continue
+
+                        if count == max_in_line:
                             count = 0
                             keyboard.add_line()
-                    button_send(id, 'Выбери дату:')
+                        keyboard.add_button(i, color=VkKeyboardColor.PRIMARY)
+                        count += 1
+                    try:
+                        button_send(id, 'Выбери дату:')
+                    except:
+                        sender(id, 'Что-то пошло не так')
                     continue
 
+            if not msg[0].isdigit():
+                msg = msg.capitalize()
+                
             if msg in get_filename_list()[:-1]:
                     set_value('file_name', msg, id)
                     clear_keyboard()
@@ -158,7 +178,7 @@ for event in longpoll.listen():
                             send_schedule_group(schedules, id, get_value('file_name', id), msg)
                             sender(id, 'Можете продолжить поиск')
                         else:
-                            button_send(id, 'Ничего не найдено')
+                            sender(id, 'Ничего не найдено')
                         # set_value('user_states', 'start', id)
                         # continue
                     else:
