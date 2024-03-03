@@ -65,6 +65,34 @@ def get_schedule_for_teacher(filename: str, find: str) -> dict:
 
 
 @cache
+def get_schedule_for_teacher_monday(filename: str, find: str) -> dict:
+    """Функция для парсинга расписания для преподавателя в понедельник"""
+    book = load_workbook(filename=f'{os.getcwd()}/static/schedule/Pасписание/' + filename)
+    ws = book.active
+    result = {}
+    count = 0
+    for i in range(1, 18):
+        for j in range(2, 38):
+            obj = str(ws.cell(row=j, column=i).value)
+            if find in obj:
+                group = 'Не обнаружено'
+                for x in range(1, 8):
+                    if str(ws.cell(row=j - x, column=i).value)[:3].isdigit():
+                        group = str(ws.cell(row=j - x, column=i).value)
+                        break
+                result[count] = {
+                    'Время: ': str(ws.cell(row=j, column=2).value),
+                    'Предмет и преподаватель: ': str(ws.cell(row=j, column=i).value).replace('\n', ' '),
+                    'Группа: ': group,
+                    'Кабинет: ': str(ws.cell(row=j, column=i + 1).value) if 'Россия' not in obj else str(ws.cell(row=j-1, column=i + 1).value)
+                }
+                count += 1
+
+    sorted_schedule = dict(sorted(result.items(), key=lambda x: int(x[1]['Время: '].split('.')[0])))
+    return sorted_schedule
+
+
+@cache
 def get_schedule_for_group(filename: str, find: str) -> dict:
     """Функция для создания словаря путем парсинга excel таблицы"""
     book = load_workbook(filename=f'{os.getcwd()}/static/schedule/Pасписание/' + filename)
@@ -80,6 +108,27 @@ def get_schedule_for_group(filename: str, find: str) -> dict:
                                  'Предмет и преподаватель: ': str(ws.cell(row=j+iter+1, column=i).value).replace('\n', ' '),
                                  'Группа: ': obj,
                                  'Кабинет: ': str(ws.cell(row=j+iter+1, column=i+1).value)}
+
+    return result
+
+
+@cache
+def get_schedule_for_group_monday(filename: str, find: str) -> dict:
+    """Функция для создания словаря путем парсинга excel таблицы"""
+    book = load_workbook(filename=f'{os.getcwd()}/static/schedule/Pасписание/' + filename)
+    ws = book.active
+    SCHEDULE_LEN = 7
+    result = {}
+    for i in range(1, 18):
+        for j in range(2, 34):
+            obj = str(ws.cell(row=j, column=i).value)
+            if obj == find:
+                for iter in range(SCHEDULE_LEN):
+                    result[iter] = {'Время: ': str(ws.cell(row=j+iter+1, column=2).value),
+                                 'Предмет и преподаватель: ': str(ws.cell(row=j+iter+1, column=i).value).replace('\n', ' '),
+                                 'Группа: ': obj,
+                                 'Кабинет: ': str(ws.cell(row=j+iter+1, column=i+1).value) if 'Россия' not in str(ws.cell(row=j+iter+1, column=i).value).replace('\n', ' ') else str(ws.cell(row=j+iter, column=i+1).value)
+                    }
 
     return result
 
@@ -199,7 +248,3 @@ class AsyncActionDownloadSchedule(threading.Thread):
 # создаем экземпляр класса для скачивания excel таблиц
 async_action_download_schedule = AsyncActionDownloadSchedule()
 async_action_download_schedule.start()
-
-
-# download_exel('https://disk.yandex.ru/d/VNdnX6hmveqJuw')
-# print(check_on_update('https://disk.yandex.ru/d/VNdnX6hmveqJuw'))

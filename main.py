@@ -5,7 +5,8 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from decouple import config
 
-from services import get_filename_list, get_schedule_for_teacher, get_schedule_for_group
+from services import get_filename_list, get_schedule_for_teacher, get_schedule_for_group, \
+    get_schedule_for_teacher_monday, get_schedule_for_group_monday
 
 
 def sender(id, text):
@@ -137,7 +138,7 @@ for event in longpoll.listen():
 
                     max_in_line = 2
 
-                    files = get_filename_list()[:-1]
+                    files = get_filename_list()
 
                     count = 0
 
@@ -161,8 +162,8 @@ for event in longpoll.listen():
 
             if not msg[0].isdigit():
                 msg = msg.capitalize()
-                
-            if msg in get_filename_list()[:-1]:
+
+            if msg in get_filename_list():
                     set_value('file_name', msg, id)
                     clear_keyboard()
                     keyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
@@ -173,9 +174,13 @@ for event in longpoll.listen():
             if msg:
                 if get_value('user_states', id) == 'enter_date':
                     if len(msg) <= 4 and msg[:3].isdigit():
-                        schedules = get_schedule_for_group(get_value('file_name', id) + '.xlsx', msg)
+                        file_name = get_value('file_name', id)
+                        if 'понедельник' in file_name:
+                            schedules = get_schedule_for_group_monday(file_name + '.xlsx', msg)
+                        else:
+                            schedules = get_schedule_for_group(file_name + '.xlsx', msg)
                         if schedules:
-                            send_schedule_group(schedules, id, get_value('file_name', id), msg)
+                            send_schedule_group(schedules, id, file_name, msg)
                             sender(id, 'Можете продолжить поиск')
                         else:
                             sender(id, 'Ничего не найдено')
@@ -183,7 +188,10 @@ for event in longpoll.listen():
                         # continue
                     else:
                         file_name = get_value('file_name', id)
-                        schedules = get_schedule_for_teacher(file_name+'.xlsx', msg.title())
+                        if 'понедельник' in file_name:
+                            schedules = get_schedule_for_teacher_monday(file_name+'.xlsx', msg.title())
+                        else:
+                            schedules = get_schedule_for_teacher(file_name+'.xlsx', msg.title())
                         if schedules:
                             send_schedule_teacher(schedules, id, file_name, msg.title())
                             sender(id, 'Можете продолжить поиск')
