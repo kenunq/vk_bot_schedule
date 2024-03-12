@@ -1,0 +1,11 @@
+[tool.black]
+line-length = 120
+
+[tool.isort]
+profile = "black"
+line-lenght = 120
+
+[tool.pylint."FORMAT"]
+max-line-lenght = 120
+line-lenght = 120
+

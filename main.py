@@ -1,28 +1,32 @@
 import json
 
 import vk_api
-from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
-from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from decouple import config
+from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
+from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
 from services import (
     get_filename_list,
-    get_schedule_for_teacher,
     get_schedule_for_group,
-    get_schedule_for_teacher_monday,
     get_schedule_for_group_monday,
+    get_schedule_for_teacher,
+    get_schedule_for_teacher_monday,
 )
 
 
-def sender(id, text):
-    vk_session.method("messages.send", {"user_id": id, "message": text, "random_id": 0})
+def sender(user_id, text):
+    """Метод для отправки сообщения пользователю"""
+    vk_session.method(
+        "messages.send", {"user_id": user_id, "message": text, "random_id": 0}
+    )
 
 
-def button_send(id, text):
+def button_send(user_id, text):
+    """Метод для отправки клавиатуры пользователю"""
     vk_session.method(
         "messages.send",
         {
-            "user_id": id,
+            "user_id": user_id,
             "message": text,
             "keyboard": str(keyboard.get_keyboard()),
             "random_id": 0,
@@ -31,19 +35,25 @@ def button_send(id, text):
 
 
 def clear_keyboard():
+    """Метод для полной отчистки клавиатуры"""
     keyboard.lines = [[]]
     keyboard.keyboard["buttons"] = keyboard.lines
 
 
-def set_value(key, value, id):
-    return vk_session.method("storage.set", {"key": key, "value": value, "user_id": id})
+def set_value(key, value, user_id):
+    """Метод для установки key/value в storage для пользователя"""
+    return vk_session.method(
+        "storage.set", {"key": key, "value": value, "user_id": user_id}
+    )
 
 
-def get_value(key, id):
-    return vk_session.method("storage.get", {"key": key, "user_id": id})
+def get_value(key, user_id):
+    """Метод для получения value из storage"""
+    return vk_session.method("storage.get", {"key": key, "user_id": user_id})
 
 
-def send_schedule_teacher(data, id, file_name, find_obj):
+def send_schedule_teacher(data, user_id, file_name, find_obj):
+    """Метод для отправки расписания для учителя"""
     carousel_elements = []
     count = 0
     for _, item in data.items():
@@ -71,7 +81,7 @@ def send_schedule_teacher(data, id, file_name, find_obj):
     vk_session.method(
         "messages.send",
         {
-            "user_id": id,
+            "user_id": user_id,
             "message": f"Расписание на {file_name} для {find_obj}",
             "template": json.dumps(
                 carousel_template
@@ -81,7 +91,8 @@ def send_schedule_teacher(data, id, file_name, find_obj):
     )
 
 
-def send_schedule_group(data, id, file_name, find_obj):
+def send_schedule_group(data, user_id, file_name, find_obj):
+    """Метод для отправки расписания для группы"""
     carousel_elements = []
     count = 0
     for _, item in data.items():
@@ -117,7 +128,7 @@ def send_schedule_group(data, id, file_name, find_obj):
     vk_session.method(
         "messages.send",
         {
-            "user_id": id,
+            "user_id": user_id,
             "message": f"Расписание на {file_name} для {find_obj}",
             "template": json.dumps(
                 carousel_template
@@ -151,10 +162,13 @@ while True:
                     if msg == "начать":
                         if get_value("user_states", id) == "start":
                             clear_keyboard()
-                            keyboard.add_button("Расписание", color=VkKeyboardColor.POSITIVE)
+                            keyboard.add_button(
+                                "Расписание", color=VkKeyboardColor.POSITIVE
+                            )
                             user_get = session_api.users.get(user_ids=(id,))
                             button_send(
-                                id, f'Привет {user_get[0]["first_name"]}!\nНапиши "Расписание"'
+                                id,
+                                f'Привет {user_get[0]["first_name"]}!\nНапиши "Расписание"',
                             )
                             continue
                         else:
@@ -167,20 +181,20 @@ while True:
 
                         clear_keyboard()
 
-                        max_in_line = 2
+                        MAX_IN_LINE = 2
 
                         files = get_filename_list()
 
                         count = 0
 
                         if len(files) > 20:
-                            max_in_line = 3
+                            MAX_IN_LINE = 3
 
                         for i in files:
                             if i.startswith("График"):
                                 continue
 
-                            if count == max_in_line:
+                            if count == MAX_IN_LINE:
                                 count = 0
                                 keyboard.add_line()
                             keyboard.add_button(i, color=VkKeyboardColor.PRIMARY)
@@ -199,7 +213,9 @@ while True:
                         clear_keyboard()
                         keyboard.add_button("Назад", color=VkKeyboardColor.NEGATIVE)
                         set_value("user_states", "enter_date", id)
-                        button_send(id, "Введите номер группы или фамилию преподавателя:")
+                        button_send(
+                            id, "Введите номер группы или фамилию преподавателя:"
+                        )
                         continue
 
                     if msg:
@@ -211,7 +227,9 @@ while True:
                                         file_name + ".xlsx", msg
                                     )
                                 else:
-                                    schedules = get_schedule_for_group(file_name + ".xlsx", msg)
+                                    schedules = get_schedule_for_group(
+                                        file_name + ".xlsx", msg
+                                    )
                                 if schedules:
                                     send_schedule_group(schedules, id, file_name, msg)
                                     sender(id, "Можете продолжить поиск")
@@ -230,7 +248,9 @@ while True:
                                         file_name + ".xlsx", msg.title()
                                     )
                                 if schedules:
-                                    send_schedule_teacher(schedules, id, file_name, msg.title())
+                                    send_schedule_teacher(
+                                        schedules, id, file_name, msg.title()
+                                    )
                                     sender(id, "Можете продолжить поиск")
                                     continue
                                 else:

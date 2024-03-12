@@ -25,7 +25,6 @@ def get_schedule_for_teacher(filename: str, find: str) -> dict:
     masssur = []
     massgr = []
     masskb = []
-    find = find
     for i in range(1, 18):
         for j in range(2, 34):
             lol = ws.cell(row=j, column=i).value
@@ -100,9 +99,11 @@ def get_schedule_for_teacher_monday(filename: str, find: str) -> dict:
                         ws.cell(row=j, column=i).value
                     ).replace("\n", " "),
                     "Группа: ": group,
-                    "Кабинет: ": str(ws.cell(row=j, column=i + 1).value)
-                    if "Россия" not in obj
-                    else str(ws.cell(row=j - 1, column=i + 1).value),
+                    "Кабинет: ": (
+                        str(ws.cell(row=j, column=i + 1).value)
+                        if "Россия" not in obj
+                        else str(ws.cell(row=j - 1, column=i + 1).value)
+                    ),
                 }
                 count += 1
 
@@ -158,12 +159,14 @@ def get_schedule_for_group_monday(filename: str, find: str) -> dict:
                             ws.cell(row=j + iter + 1, column=i).value
                         ).replace("\n", " "),
                         "Группа: ": obj,
-                        "Кабинет: ": str(ws.cell(row=j + iter + 1, column=i + 1).value)
-                        if "Россия"
-                        not in str(ws.cell(row=j + iter + 1, column=i).value).replace(
-                            "\n", " "
-                        )
-                        else str(ws.cell(row=j + iter, column=i + 1).value),
+                        "Кабинет: ": (
+                            str(ws.cell(row=j + iter + 1, column=i + 1).value)
+                            if "Россия"
+                            not in str(
+                                ws.cell(row=j + iter + 1, column=i).value
+                            ).replace("\n", " ")
+                            else str(ws.cell(row=j + iter, column=i + 1).value)
+                        ),
                     }
 
     return result
@@ -252,7 +255,7 @@ def download_exel(url: str) -> None:
         os.remove(to_url + "/static/schedule/qwe.zip")
 
     file_list = os.walk(os.getcwd() + "/static/schedule/Pасписание")
-    for root, dirs, files in file_list:
+    for root, _, files in file_list:
         for file in files:
             file_path = os.path.join(root, file)
             new_file_name = file[:-5].rstrip() + ".xlsx"
